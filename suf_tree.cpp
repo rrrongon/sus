@@ -17,6 +17,7 @@
 #include <string.h>
 #include <cassert>
 #include <string>
+#include <vector>
 
 using std::cout;
 using std::cin;
@@ -24,6 +25,9 @@ using std::cerr;
 using std::setw;
 using std::flush;
 using std::endl;
+
+
+void map_leaf_pos();
 
 //
 // When a new tree is added to the table, we step
@@ -41,6 +45,41 @@ using std::endl;
 // and set first_char_index > last_char_index to flag
 // that.
 //
+
+class data_box{
+    public:
+        int start_node;
+        int end_node;
+        int suffix_node;
+        int first_char_index;
+        int last_char_index;
+
+        std::string substring;
+
+        data_box(int start_node,
+        int end_node,
+        int suffix_node,
+        int first_char_index,
+        int last_char_index,
+        std::string substring);
+};
+
+data_box::data_box(int start_node_l,
+        int end_node_l,
+        int suffix_node_l,
+        int first_char_index_l,
+        int last_char_index_l,
+        std::string substring_l){
+
+    end_node = end_node_l;
+    suffix_node = suffix_node_l;
+    first_char_index = first_char_index_l;
+    last_char_index = last_char_index_l;
+    substring = substring_l;
+
+}
+
+std::vector<data_box> DATA_HUB;
 
 class Suffix {
     public :
@@ -308,6 +347,33 @@ int Edge::SplitEdge( Suffix &s )
 // print out the tree in a graphical fashion, but I don't!
 //
 
+void map_leaf_pos(){
+    /*
+    Store substring for matching one by one
+    */
+    char substring_arr [N];
+    std::vector <std::string> substring_hub;
+    for (int i=0; i<N; i++){
+        int x = 0;
+        for (int j=i; j<N; j++){
+            substring_arr[x] = T[j];
+            x++;
+        }
+        std::string substring(substring_arr);
+        // printf("Substring: %s\n", substring.c_str());
+        substring_hub.push_back(substring);
+        memset(substring_arr, 0, sizeof substring_arr);
+    }
+
+    for (int i=0; i< substring_hub.size(); i++){
+        //printf("%s\n", substring_hub[i].c_str());
+        std::string search_string = substring_hub[i];
+        // for ( int j = 0 ; j < HASH_TABLE_SIZE ; j++ ) {
+        //     //std::string temp_suffix = Nodes[ s->end_node ].suffix_node
+        // }
+    }
+}
+
 void dump_edges( int current_n )
 {
     cout << " Start  End  Suf  First Last  String\n";
@@ -320,15 +386,27 @@ void dump_edges( int current_n )
              << setw( 3 ) << Nodes[ s->end_node ].suffix_node << " "
              << setw( 5 ) << s->first_char_index << " "
              << setw( 6 ) << s->last_char_index << "  ";
+        int start_node = s->start_node;
+        int end_node =  s->end_node;
+        int suffix_node = Nodes[ s->end_node ].suffix_node;
+        int first_char_index = s->first_char_index;
+        int last_char_index = s->last_char_index;
+
         int top;
         if ( current_n > s->last_char_index )
             top = s->last_char_index;
         else
             top = current_n;
+        std::string substring;
         for ( int l = s->first_char_index ;
                   l <= top;
-                  l++ )
-            cout << T[ l ];
+                  l++ ){
+                      substring += T[l];
+                      cout << T[ l ];
+                  }
+            
+        data_box data (start_node, end_node, suffix_node, first_char_index, last_char_index, substring);
+        DATA_HUB.push_back(data);
         cout << "\n";
     }
 }
@@ -425,7 +503,7 @@ void AddPrefix( Suffix &active, int last_char_index ) // origin_node=0, first_ch
     if ( last_parent_node > 0 )
         Nodes[ last_parent_node ].suffix_node = parent_node;
     active.last_char_index++;  //Now the endpoint is the next active point
-    //active.Canonize();
+    active.Canonize();
 };
 
 int main()
@@ -456,6 +534,7 @@ int main()
 // optionally performed.
 //
     dump_edges( N );
+    map_leaf_pos();
 
     /*cout << "Would you like to validate the tree?"
          << flush;
