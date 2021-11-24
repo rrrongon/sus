@@ -17,6 +17,8 @@
 #include <string.h>
 #include <cassert>
 #include <string>
+#include <vector>
+#include <map>
 
 using std::cout;
 using std::cin;
@@ -24,6 +26,14 @@ using std::cerr;
 using std::setw;
 using std::flush;
 using std::endl;
+
+const int NO_MATCH=0;
+const int PARTIAL_MATCH=1;
+const int FULL_MATCH=2;
+
+void map_leaf_pos();
+int find_leaf_node(std::string search_string);
+
 
 //
 // When a new tree is added to the table, we step
@@ -41,6 +51,43 @@ using std::endl;
 // and set first_char_index > last_char_index to flag
 // that.
 //
+
+class data_box{
+    public:
+        int start_node;
+        int end_node;
+        int suffix_node;
+        int first_char_index;
+        int last_char_index;
+
+        std::string substring;
+
+        data_box(int start_node,
+        int end_node,
+        int suffix_node,
+        int first_char_index,
+        int last_char_index,
+        std::string substring);
+};
+
+data_box::data_box(int start_node_l,
+        int end_node_l,
+        int suffix_node_l,
+        int first_char_index_l,
+        int last_char_index_l,
+        std::string substring_l){
+    
+    start_node = start_node_l;
+    end_node = end_node_l;
+    suffix_node = suffix_node_l;
+    first_char_index = first_char_index_l;
+    last_char_index = last_char_index_l;
+    substring = substring_l;
+
+}
+
+std::vector<data_box> DATA_HUB;
+std::map<int, int> _POS_LEAF_MAPPING;
 
 class Suffix {
     public :
@@ -249,17 +296,14 @@ void Edge::Remove()
 Edge Edge::Find( int node, int c )
 {
     int i = Hash( node, c );
-    printf("c val: %d, hashed i val: %d\n", c, i);
     for ( ; ; ) {
         if ( Edges[ i ].start_node == node )
             {
-                printf("i=%d; Edges[i].start_node=%d\n", i, Edges[i].start_node);
                 if ( c == T[ Edges[ i ].first_char_index ] )
                     return Edges[ i ];
             }
             
         if ( Edges[ i ].start_node == -1 ){
-            printf("i=%d; Edges[i].start_node=%d\n", i, Edges[i].start_node);            
             return Edges[ i ];
         }
             
@@ -308,6 +352,129 @@ int Edge::SplitEdge( Suffix &s )
 // print out the tree in a graphical fashion, but I don't!
 //
 
+void map_leaf_pos(){
+    /*
+    Store substring for matching one by one
+    */
+    const int SIZE = N+1;
+    char substring_arr [SIZE];
+    memset(substring_arr, 0, sizeof substring_arr);
+    std::vector <std::string> substring_hub;
+    
+    for (int i=0; i<N; i++){
+        int x = 0;
+        for (int j=i; j<=N; j++){
+            substring_arr[x] = T[j];
+            x++;
+        }
+        substring_arr[x] = '\0';
+        std::string substring(substring_arr);
+        substring_hub.push_back(substring);
+        memset(substring_arr, 0, sizeof substring_arr);
+    }
+
+    for (int i=0; i< substring_hub.size(); i++){
+        //printf("%s\n", substring_hub[i].c_str());
+        std::string search_string = substring_hub[i];
+        int leaf_node = find_leaf_node(search_string);
+    }
+}
+
+int find_leaf_node(std::string search_string){
+    int match_pos = 0;
+    int end_node = -1;
+    int matches = NO_MATCH;
+    int next_node= -1;
+    int final_end_node = -1;
+
+    int intermediate_pos_increase = -1;
+    
+    for (int i=0; i< DATA_HUB.size(); i++){
+        
+        data_box data = DATA_HUB[i];
+        std::string suffix_string = data.substring;
+        //cout << "current suffix string: " << suffix_string << endl;
+
+        if (matches == NO_MATCH){
+            next_node = data.end_node;
+
+            int possible_partial_length = std::min(search_string.length() - match_pos, suffix_string.length());
+
+            for (int j=0; j< possible_partial_length; j++){
+                if(suffix_string[j]!= search_string[j+match_pos]){
+                    matches = NO_MATCH;
+                    intermediate_pos_increase = -1;
+                    break;
+                }else{
+                    matches = PARTIAL_MATCH;
+                    intermediate_pos_increase = j+1 ;
+                }
+
+                if (matches == PARTIAL_MATCH && match_pos == search_string.length()){
+                    matches = FULL_MATCH;
+                    break;
+                }
+            }
+            
+            if (matches == PARTIAL_MATCH){
+                match_pos = match_pos + intermediate_pos_increase;
+                i = 0;
+            }
+
+        }else if(matches==PARTIAL_MATCH){
+            // match the previous end node with current start node starting from very begining
+            int current_start_node = data.start_node;
+
+            if (current_start_node == next_node) {
+                int possible_partial_length = std::min(search_string.length() - match_pos, suffix_string.length());
+
+                for (int j=0; j< possible_partial_length; j++){
+                    if(suffix_string[j]!= search_string[match_pos +j]){
+                        matches = PARTIAL_MATCH;
+                        intermediate_pos_increase = -1;
+                        break;
+                    }else{
+                        matches = PARTIAL_MATCH;
+                        next_node = data.end_node;
+                        intermediate_pos_increase = j+1;
+                    }
+                }
+                if(intermediate_pos_increase > -1){
+                    match_pos = match_pos + intermediate_pos_increase;
+                    i = 0;
+                }
+                if (matches == PARTIAL_MATCH && match_pos == search_string.length()){
+                        matches = FULL_MATCH;
+                        next_node = data.end_node;
+                        end_node = data.end_node;
+                        break;
+                }
+            }else{
+                continue;
+            }
+        }
+        
+    }
+
+    switch (matches)
+    {
+        case FULL_MATCH:
+            // hold the last node
+            // break
+            cout << "search string: " << search_string << " end node: " << end_node << endl;
+            break;
+        case NO_MATCH:
+            end_node = -1;
+            break;
+
+        default:
+            break;
+    }
+
+    return end_node;
+}
+
+
 void dump_edges( int current_n )
 {
     cout << " Start  End  Suf  First Last  String\n";
@@ -320,15 +487,27 @@ void dump_edges( int current_n )
              << setw( 3 ) << Nodes[ s->end_node ].suffix_node << " "
              << setw( 5 ) << s->first_char_index << " "
              << setw( 6 ) << s->last_char_index << "  ";
+        int start_node = s->start_node;
+        int end_node =  s->end_node;
+        int suffix_node = Nodes[ s->end_node ].suffix_node;
+        int first_char_index = s->first_char_index;
+        int last_char_index = s->last_char_index;
+
         int top;
         if ( current_n > s->last_char_index )
             top = s->last_char_index;
         else
             top = current_n;
+        std::string substring;
         for ( int l = s->first_char_index ;
                   l <= top;
-                  l++ )
-            cout << T[ l ];
+                  l++ ){
+                      substring += T[l];
+                      cout << T[ l ];
+                  }
+            
+        data_box data (start_node, end_node, suffix_node, first_char_index, last_char_index, substring);
+        DATA_HUB.push_back(data);
         cout << "\n";
     }
 }
@@ -425,7 +604,7 @@ void AddPrefix( Suffix &active, int last_char_index ) // origin_node=0, first_ch
     if ( last_parent_node > 0 )
         Nodes[ last_parent_node ].suffix_node = parent_node;
     active.last_char_index++;  //Now the endpoint is the next active point
-    //active.Canonize();
+    active.Canonize();
 };
 
 int main()
@@ -456,11 +635,12 @@ int main()
 // optionally performed.
 //
     dump_edges( N );
+    map_leaf_pos();
 
     /*cout << "Would you like to validate the tree?"
          << flush;
     std::string s;
-    getline( cin, s ); 
+    getline( cin, s );
     if ( s.size() > 0 && s[ 0 ] == 'Y' || s[ 0 ] == 'y' )
         validate();*/
 
@@ -557,7 +737,7 @@ int walk_tree( int start_node, int last_char_so_far )
                 BranchCount[ edge.end_node ]--;
             }
         }
-    } 
+    }
 //
 // If this node didn't have any child edges, it means we
 // are at a leaf node, and can check on this suffix.  We
