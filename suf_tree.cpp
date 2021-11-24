@@ -32,7 +32,8 @@ const int PARTIAL_MATCH=1;
 const int FULL_MATCH=2;
 
 void map_leaf_pos();
-int find_leaf_node(std::string search_string);
+int find_leaf_node(std::string search_string, int pos);
+void find_lsus();
 
 
 //
@@ -88,6 +89,8 @@ data_box::data_box(int start_node_l,
 
 std::vector<data_box> DATA_HUB;
 std::map<int, int> _POS_LEAF_MAPPING;
+std::map<int, int> _POS_EDGE_LEN_MAPPING;
+std::map<int, std::string> _LSUS;
 
 class Suffix {
     public :
@@ -376,11 +379,12 @@ void map_leaf_pos(){
     for (int i=0; i< substring_hub.size(); i++){
         //printf("%s\n", substring_hub[i].c_str());
         std::string search_string = substring_hub[i];
-        int leaf_node = find_leaf_node(search_string);
+        int leaf_node = find_leaf_node(search_string, i);
+        _POS_LEAF_MAPPING.insert(std::pair<int,int>(i,leaf_node)) ;
     }
 }
 
-int find_leaf_node(std::string search_string){
+int find_leaf_node(std::string search_string, int pos){
     int match_pos = 0;
     int end_node = -1;
     int matches = NO_MATCH;
@@ -454,6 +458,17 @@ int find_leaf_node(std::string search_string){
             }
         }
         
+        // start matching
+        // if matches partially or full
+
+        // for (int j=0; j< search_string.length(); j++){
+        //     if(suffix_string.length() < search_string.length()){
+        //         if (suffix_string[j] == search_string[j]){
+        //             continue;
+        //         }
+        //     }
+        // }
+        
     }
 
     switch (matches)
@@ -461,7 +476,8 @@ int find_leaf_node(std::string search_string){
         case FULL_MATCH:
             // hold the last node
             // break
-            cout << "search string: " << search_string << " end node: " << end_node << endl;
+            cout << "search string: " << search_string << " end node: " << end_node << ", leaf edge len: " << intermediate_pos_increase << endl;
+            _POS_EDGE_LEN_MAPPING.insert(std::pair<int, int>(pos, intermediate_pos_increase-1));
             break;
         case NO_MATCH:
             end_node = -1;
@@ -474,6 +490,26 @@ int find_leaf_node(std::string search_string){
     return end_node;
 }
 
+void find_lsus(){
+    std::map<int, int >::iterator it;
+    
+    for (it=_POS_EDGE_LEN_MAPPING.begin(); it != _POS_EDGE_LEN_MAPPING.end(); it++) {
+        int pos = it->first;
+        int leaf_len = it->second;
+        
+        if (leaf_len >0){
+            int end_pos = N-leaf_len;
+            //lsus S[p, n-l+1]
+            char *lsus = new char[end_pos-pos+1];
+            int index = 0;
+            for (int i=pos ; i<= end_pos ; i++){
+                lsus[index]=T[i];
+                index++;
+            }
+            cout << "lsus at pos: " << pos << " is: " << lsus << endl;
+        }
+    }
+}
 
 void dump_edges( int current_n )
 {
@@ -633,10 +669,13 @@ int main()
 // Once all N prefixes have been added, the resulting table
 // of edges is printed out, and a validation step is
 // optionally performed.
-//
+
+    /* Added by
+     Rubayet */
+    
     dump_edges( N );
     map_leaf_pos();
-
+    find_lsus();
     /*cout << "Would you like to validate the tree?"
          << flush;
     std::string s;
