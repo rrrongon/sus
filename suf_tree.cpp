@@ -30,11 +30,12 @@ using std::endl;
 const int NO_MATCH=0;
 const int PARTIAL_MATCH=1;
 const int FULL_MATCH=2;
+const bool DEBUG_LOG = true;
 
 void map_leaf_pos();
 int find_leaf_node(std::string search_string, int pos);
 void find_lsus();
-
+void baseline_algorithm();
 
 //
 // When a new tree is added to the table, we step
@@ -86,11 +87,38 @@ data_box::data_box(int start_node_l,
     substring = substring_l;
 
 }
+//
+// The maximum input string length this program
+// will handle is defined here.  A suffix tree
+// can have as many as 2N edges/nodes.  The edges
+// are stored in a hash table, whose size is also
+// defined here.
+//
+const int MAX_LENGTH = 1000;
+const int HASH_TABLE_SIZE = 2179;  //A prime roughly 10% larger
 
+//
+// The input buffer and character count.  Please note that N
+// is the length of the input string -1, which means it
+// denotes the maximum index in the input buffer.
+//
+
+char T[ MAX_LENGTH ];
+int N;
+
+struct Baseline_sus{
+    int start_pos;
+    int end_pos;
+};
+
+/* storage variables */
 std::vector<data_box> DATA_HUB;
 std::map<int, int> _POS_LEAF_MAPPING;
 std::map<int, int> _POS_EDGE_LEN_MAPPING;
 std::map<int, std::string> _LSUS;
+int * _lsus_size = new int [N];
+std::map<int, Baseline_sus> _BASELINE_SUS;
+
 
 class Suffix {
     public :
@@ -148,16 +176,6 @@ class Node {
 };
 
 //
-// The maximum input string length this program
-// will handle is defined here.  A suffix tree
-// can have as many as 2N edges/nodes.  The edges
-// are stored in a hash table, whose size is also
-// defined here.
-//
-const int MAX_LENGTH = 1000;
-const int HASH_TABLE_SIZE = 2179;  //A prime roughly 10% larger
-
-//
 // This is the hash table where all the currently
 // defined edges are stored.  You can dump out
 // all the currently defined edges by iterating
@@ -175,15 +193,6 @@ Edge Edges[ HASH_TABLE_SIZE ];
 
 int Node::Count = 1;
 Node Nodes[ MAX_LENGTH * 2 ];
-
-//
-// The input buffer and character count.  Please note that N
-// is the length of the input string -1, which means it
-// denotes the maximum index in the input buffer.
-//
-
-char T[ MAX_LENGTH ];
-int N;
 
 //
 // Necessary forward references
@@ -397,11 +406,12 @@ int find_leaf_node(std::string search_string, int pos){
         
         data_box data = DATA_HUB[i];
         std::string suffix_string = data.substring;
+        int is_suffix = data.suffix_node;
         //cout << "current suffix string: " << suffix_string << endl;
 
         if (matches == NO_MATCH){
             next_node = data.end_node;
-
+            
             int possible_partial_length = std::min(search_string.length() - match_pos, suffix_string.length());
 
             for (int j=0; j< possible_partial_length; j++){
@@ -422,9 +432,13 @@ int find_leaf_node(std::string search_string, int pos){
             
             if (matches == PARTIAL_MATCH){
                 match_pos = match_pos + intermediate_pos_increase;
-                i = 0;
+                i=0;
             }
-
+            
+            if(is_suffix==-1 && matches==PARTIAL_MATCH){
+                break;
+            }
+            
         }else if(matches==PARTIAL_MATCH){
             // match the previous end node with current start node starting from very begining
             int current_start_node = data.start_node;
@@ -453,22 +467,9 @@ int find_leaf_node(std::string search_string, int pos){
                         end_node = data.end_node;
                         break;
                 }
-            }else{
-                continue;
+                
             }
         }
-        
-        // start matching
-        // if matches partially or full
-
-        // for (int j=0; j< search_string.length(); j++){
-        //     if(suffix_string.length() < search_string.length()){
-        //         if (suffix_string[j] == search_string[j]){
-        //             continue;
-        //         }
-        //     }
-        // }
-        
     }
 
     switch (matches)
@@ -476,13 +477,20 @@ int find_leaf_node(std::string search_string, int pos){
         case FULL_MATCH:
             // hold the last node
             // break
-            cout << "search string: " << search_string << " end node: " << end_node << ", leaf edge len: " << intermediate_pos_increase << endl;
+            if (DEBUG_LOG)
+                cout << "search string: " << search_string << " end node: " << end_node << ", leaf edge len: " << intermediate_pos_increase << endl;
             _POS_EDGE_LEN_MAPPING.insert(std::pair<int, int>(pos, intermediate_pos_increase-1));
             break;
         case NO_MATCH:
             end_node = -1;
             break;
-
+        
+        case PARTIAL_MATCH:
+            if (match_pos == search_string.length()){
+                if (DEBUG_LOG)
+                    cout << "search string: " << search_string << " end node: " << end_node << ", leaf edge len: " << intermediate_pos_increase << endl;
+            }
+            _POS_EDGE_LEN_MAPPING.insert(std::pair<int, int>(pos, intermediate_pos_increase-1));
         default:
             break;
     }
@@ -506,10 +514,73 @@ void find_lsus(){
                 lsus[index]=T[i];
                 index++;
             }
-            cout << "lsus at pos: " << pos << " is: " << lsus << endl;
+            if (DEBUG_LOG)
+                cout << "lsus at pos: " << pos << " is: " << lsus << endl;
             _LSUS.insert(std::pair<int, std::string>(pos, lsus));
+            _lsus_size[pos] = end_pos;
+        }else {
+            std::string null_string = "";
+            _LSUS.insert(std::pair<int, std::string>(pos, null_string));
+            _lsus_size[pos] = N;
         }
+         
     }
+}
+
+void baseline_algorithm(){
+    // output: leftmost SUS containing position p
+    std::map<int, std::string >::iterator it;
+    int i,j;
+    cout << "---BASELINE----" << endl;
+    for (it=_LSUS.begin(); it != _LSUS.end(); it++){
+        int pos = it->first;
+        std::string lsus = it->second;
+        
+        if (lsus == "" ){
+            it->second = T;
+            _lsus_size[pos] = N;
+        }
+        if (DEBUG_LOG)
+            cout << "pos: " << pos <<  ", lsus: " << it->second << endl;
+        
+        i = pos;
+        j = _lsus_size[pos];
+        
+        for (int k= pos-1; k>= 0 && pos-k <= j-i; k--){
+            if (_lsus_size[k]==N)
+                continue;
+            
+            int r = _lsus_size[k];
+            
+            if(r<pos)
+                r = pos;
+            if(r-k<=j-i){
+                i=r;
+                j=k;
+            }
+        }
+        
+        if (i>j){
+            int temp = j;
+            j=i;
+            i=temp;
+        }
+        
+        Baseline_sus b_sus;
+        b_sus.start_pos = i;
+        b_sus.end_pos=j;
+        
+        char *baseline_lsus = new char[j-i+1];
+        int index = 0;
+        for (int x=i ; x<= j ; x++){
+            baseline_lsus[index]=T[x];
+            index++;
+        }
+        
+        cout << "pos: "<< pos << ", start pos: " << i << ", endpos: " << j << ", lsus: " << baseline_lsus <<  endl;
+        _BASELINE_SUS.insert(std::pair<int, Baseline_sus>(pos, b_sus));
+    }
+    
 }
 
 void dump_edges( int current_n )
@@ -677,6 +748,7 @@ int main()
     dump_edges( N );
     map_leaf_pos();
     find_lsus();
+    baseline_algorithm();
     /*cout << "Would you like to validate the tree?"
          << flush;
     std::string s;
