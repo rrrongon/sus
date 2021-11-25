@@ -507,6 +507,7 @@ void find_lsus(){
                 index++;
             }
             cout << "lsus at pos: " << pos << " is: " << lsus << endl;
+            _LSUS.insert(std::pair<int, std::string>(pos, lsus));
         }
     }
 }
