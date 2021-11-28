@@ -36,7 +36,10 @@ void map_leaf_pos();
 int find_leaf_node(std::string search_string, int pos);
 void find_lsus();
 void baseline_algorithm();
+void unique_substring();
+void find_MUS();
 
+void propagate(int start, int end, int k);
 //
 // When a new tree is added to the table, we step
 // through all the currently defined suffixes from
@@ -111,6 +114,11 @@ struct Baseline_sus{
     int end_pos;
 };
 
+struct Candidate{
+    int i;
+    int j;
+};
+
 /* storage variables */
 std::vector<data_box> DATA_HUB;
 std::map<int, int> _POS_LEAF_MAPPING;
@@ -118,7 +126,8 @@ std::map<int, int> _POS_EDGE_LEN_MAPPING;
 std::map<int, std::string> _LSUS;
 int * _lsus_size = new int [N];
 std::map<int, Baseline_sus> _BASELINE_SUS;
-
+std::map<std::string, Candidate> _SUBSTRING_POS_MAPPING;
+std::vector<Candidate> _UNIQUE_SUBSTRING_POS;
 
 class Suffix {
     public :
@@ -583,6 +592,85 @@ void baseline_algorithm(){
     
 }
 
+void unique_substring(){
+    std::string full_string(T);
+    
+    std::vector<std::string> a1;
+    for (int i = 0; i < full_string.size(); i++)
+    {
+        for (int j = i + 1; j < full_string.size(); j++)
+        {
+            // Avoid multiple occurences
+            if (i != j){
+                // Append all substrings
+                std::string substring = full_string.substr(i,j+1);
+                a1.push_back(substring);
+                
+                Candidate c;
+                c.i = i;
+                c.j = j+1;
+                _SUBSTRING_POS_MAPPING.insert(std::pair<std::string, Candidate>(substring, c));
+                
+//                if(DEBUG_LOG)
+//                    cout << "substring: " << substring << endl;
+            }
+        }
+    }
+    
+    // all the substrings
+    std::map<std::string,int> a2;
+    for(std::string i:a1) a2[i]++;
+    
+    std::vector<std::string> freshlist;
+    
+    for (auto i:a2)
+    {
+ 
+          // If frequency is 1
+        if (i.second == 1){
+            // Append into fresh list
+            std::string unique_string = i.first;
+            freshlist.push_back(unique_string);
+            
+            std::map<std::string, Candidate>::iterator it;
+            for (it=_SUBSTRING_POS_MAPPING.begin(); it != _SUBSTRING_POS_MAPPING.end(); it++) {
+                std::string substring = it->first;
+                Candidate str_pos = it->second;
+                
+                if (substring==unique_string){
+                    // store the position of the unique string
+                    _UNIQUE_SUBSTRING_POS.push_back(str_pos);
+                }
+            }
+        }
+    }
+}
+
+void find_MUS(){
+    for(int i=0;i<_UNIQUE_SUBSTRING_POS.size();i++){
+        Candidate c = _UNIQUE_SUBSTRING_POS[i];
+        
+        if(DEBUG_LOG){
+            cout << "unique substring i: " << c.i << ", j: " << c.j << endl;
+        }
+    }
+}
+
+void propagate(int i, int j, int k){
+    int k_end_pos = _lsus_size[k];
+    
+    if(k<i || k>j)
+        return;
+    else if (k_end_pos==N){
+        // that means it is null. Thus it was assigned the largest value N
+        Candidate k_cand;
+        k_cand.i = i;
+        k_cand.j = j;
+        
+        return;
+    }
+}
+
 void dump_edges( int current_n )
 {
     cout << " Start  End  Suf  First Last  String\n";
@@ -749,6 +837,9 @@ int main()
     map_leaf_pos();
     find_lsus();
     baseline_algorithm();
+    unique_substring();
+    find_MUS();
+    
     /*cout << "Would you like to validate the tree?"
          << flush;
     std::string s;
