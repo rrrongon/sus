@@ -128,6 +128,7 @@ int * _lsus_size = new int [N];
 std::map<int, Baseline_sus> _BASELINE_SUS;
 std::map<std::string, Candidate> _SUBSTRING_POS_MAPPING;
 std::vector<Candidate> _UNIQUE_SUBSTRING_POS;
+std::vector<Candidate> _TRUE_UNIQUE_SUBSTRING_POS;
 
 class Suffix {
     public :
@@ -632,13 +633,18 @@ void unique_substring(){
             std::string unique_string = i.first;
             freshlist.push_back(unique_string);
             
+            cout << "unique substring: " << unique_string << endl;
+            
             std::map<std::string, Candidate>::iterator it;
+            
             for (it=_SUBSTRING_POS_MAPPING.begin(); it != _SUBSTRING_POS_MAPPING.end(); it++) {
                 std::string substring = it->first;
                 Candidate str_pos = it->second;
                 
                 if (substring==unique_string){
                     // store the position of the unique string
+                    cout << "MUS: i= " << str_pos.i << ", j= " << str_pos.j << endl;
+                    
                     _UNIQUE_SUBSTRING_POS.push_back(str_pos);
                 }
             }
@@ -649,9 +655,32 @@ void unique_substring(){
 void find_MUS(){
     for(int i=0;i<_UNIQUE_SUBSTRING_POS.size();i++){
         Candidate c = _UNIQUE_SUBSTRING_POS[i];
+        Candidate true_c;
+        int candidate_i = c.i;
+        int candidate_j = c.j;
         
-        if(DEBUG_LOG){
-            cout << "unique substring i: " << c.i << ", j: " << c.j << endl;
+        bool is_mus = false;
+        true_c = c;
+        
+        for (int j=0; j< _UNIQUE_SUBSTRING_POS.size(); j++){
+            Candidate c_prime = _UNIQUE_SUBSTRING_POS[j];
+            
+            int i_prime = c_prime.i;
+            int j_prime = c_prime.j;
+            
+            if( i_prime>candidate_i && j_prime < candidate_j){
+                is_mus = false;
+                break;
+            }else{
+                is_mus = true;
+            }
+        }
+        
+        if(is_mus){
+            _TRUE_UNIQUE_SUBSTRING_POS.push_back(true_c);
+            
+            if (DEBUG_LOG)
+                cout << "true mus i: " << true_c.i << ", j: "<< true_c.j << endl;
         }
     }
 }
