@@ -1,4 +1,16 @@
-
+//
+// STREE2006.CPP - Suffix tree creation
+//
+// Mark Nelson, updated December, 2006
+//
+// This code has been tested with Borland C++ and
+// Microsoft Visual C++.
+//
+// This program asks you for a line of input, then
+// creates the suffix tree corresponding to the given
+// text. Additional code is provided to validate the
+// resulting tree after creation.
+//
 #include <iostream>
 #include <iomanip>
 #include <cstdlib>
@@ -91,8 +103,8 @@ data_box::data_box(int start_node_l,
 // are stored in a hash table, whose size is also
 // defined here.
 //
-const int MAX_LENGTH = 10000;
-const int HASH_TABLE_SIZE = 21799;  //A prime roughly 10% larger
+const int MAX_LENGTH = 100000;
+const int HASH_TABLE_SIZE = 217999;  //A prime roughly 10% larger
 
 //
 // The input buffer and character count.  Please note that N
@@ -101,6 +113,7 @@ const int HASH_TABLE_SIZE = 21799;  //A prime roughly 10% larger
 //
 
 char T[ MAX_LENGTH ];
+char tt[ MAX_LENGTH ];
 int N;
 
 struct Baseline_sus{
@@ -204,6 +217,22 @@ Edge Edges[ HASH_TABLE_SIZE ];
 
 int Node::Count = 1;
 Node Nodes[ MAX_LENGTH * 2 ];
+
+//
+// Necessary forward references
+//
+/*
+comment out by @rubayet
+void validate();
+int walk_tree( int start_node, int last_char_so_far );
+*/
+
+//
+// The default ctor for Edge just sets start_node
+// to the invalid value.  This is done to guarantee
+// that the hash table is initially filled with unused
+// edges.
+//
 
 Edge::Edge()
 {
@@ -839,7 +868,8 @@ void preComputation_algorithm(){
             _Algo3_VECTOR[pos].start = pos;
             _Algo3_VECTOR[pos].end = s;
         }
-        cout << "SUS at position: " << pos << " : " << _Algo3_VECTOR[pos].cand << endl;
+        
+        cout << "SUS at position: " << pos << " : " << _Algo3_VECTOR[pos].cand << ", length: " <<  _Algo3_VECTOR[pos].cand.length()<< endl;
     }
 }
 
@@ -1091,6 +1121,32 @@ int main()
     unique_substring();
     find_MUS();
     preComputation_algorithm();
+    
+    std::string search_string;
+    std::string X(T);
+    cout << "Enter string you want to find SUS for: " << flush;
+    
+    while (std::getline(std::cin, search_string))
+    {
+        if(search_string=="q" || search_string=="Q")
+            exit(1);
+        std::size_t found = X.find(search_string);
+        
+        std::vector<size_t> positions; // holds all the positions that sub occurs within str
+
+        std::size_t pos = X.find(search_string, 0);
+        while(pos != std::string::npos)
+        {
+            positions.push_back(pos);
+            pos = X.find(search_string,pos+1);
+        }
+        
+        for (int i=0; i< positions.size();i++){
+            std::string sus = _Algo3_VECTOR[positions[i]].cand;
+            cout << "SUS found at position: " << positions[i] << ", is: " << sus << endl;
+        }
+    }
+    
     return 1;
 };
 
