@@ -1,16 +1,4 @@
-//
-// STREE2006.CPP - Suffix tree creation
-//
-// Mark Nelson, updated December, 2006
-//
-// This code has been tested with Borland C++ and
-// Microsoft Visual C++.
-//
-// This program asks you for a line of input, then
-// creates the suffix tree corresponding to the given
-// text. Additional code is provided to validate the
-// resulting tree after creation.
-//
+
 #include <iostream>
 #include <iomanip>
 #include <cstdlib>
@@ -32,13 +20,19 @@ const int PARTIAL_MATCH=1;
 const int FULL_MATCH=2;
 const bool DEBUG_LOG = true;
 
+const int CASE_1 = 1;
+const int CASE_2 = 2;
+const int CASE_3 = 3;
+const int CASE_4 = 4;
+
 void map_leaf_pos();
 int find_leaf_node(std::string search_string, int pos);
 void find_lsus();
 void baseline_algorithm();
 void unique_substring();
 void find_MUS();
-
+void preComputation_algorithm();
+bool check_if_MUS(int l, int r);
 void propagate(int start, int end, int k);
 //
 // When a new tree is added to the table, we step
@@ -97,8 +91,8 @@ data_box::data_box(int start_node_l,
 // are stored in a hash table, whose size is also
 // defined here.
 //
-const int MAX_LENGTH = 1000;
-const int HASH_TABLE_SIZE = 2179;  //A prime roughly 10% larger
+const int MAX_LENGTH = 10000;
+const int HASH_TABLE_SIZE = 21799;  //A prime roughly 10% larger
 
 //
 // The input buffer and character count.  Please note that N
@@ -119,6 +113,12 @@ struct Candidate{
     int j;
 };
 
+struct Algo3_candidate{
+    std::string cand;
+    int start;
+    int end;
+};
+
 /* storage variables */
 std::vector<data_box> DATA_HUB;
 std::map<int, int> _POS_LEAF_MAPPING;
@@ -128,7 +128,8 @@ int * _lsus_size = new int [N];
 std::map<int, Baseline_sus> _BASELINE_SUS;
 std::map<std::string, Candidate> _SUBSTRING_POS_MAPPING;
 std::vector<Candidate> _UNIQUE_SUBSTRING_POS;
-std::vector<Candidate> _TRUE_UNIQUE_SUBSTRING_POS;
+std::vector<Candidate> _MUS;
+std::vector<Algo3_candidate> _Algo3_VECTOR;
 
 class Suffix {
     public :
@@ -203,22 +204,6 @@ Edge Edges[ HASH_TABLE_SIZE ];
 
 int Node::Count = 1;
 Node Nodes[ MAX_LENGTH * 2 ];
-
-//
-// Necessary forward references
-//
-/*
-comment out by @rubayet
-void validate();
-int walk_tree( int start_node, int last_char_so_far );
-*/
-
-//
-// The default ctor for Edge just sets start_node
-// to the invalid value.  This is done to guarantee
-// that the hash table is initially filled with unused
-// edges.
-//
 
 Edge::Edge()
 {
@@ -633,7 +618,7 @@ void unique_substring(){
             std::string unique_string = i.first;
             freshlist.push_back(unique_string);
             
-            cout << "unique substring: " << unique_string << endl;
+            //cout << "unique substring: " << unique_string << endl;
             
             std::map<std::string, Candidate>::iterator it;
             
@@ -643,8 +628,8 @@ void unique_substring(){
                 
                 if (substring==unique_string){
                     // store the position of the unique string
-                    cout << "MUS: i= " << str_pos.i << ", j= " << str_pos.j << endl;
-                    
+//                    cout << "MUS: i= " << str_pos.i << ", j= " << str_pos.j << endl;
+//
                     _UNIQUE_SUBSTRING_POS.push_back(str_pos);
                 }
             }
@@ -677,7 +662,7 @@ void find_MUS(){
         }
         
         if(is_mus){
-            _TRUE_UNIQUE_SUBSTRING_POS.push_back(true_c);
+            _MUS.push_back(true_c);
             
             if (DEBUG_LOG)
                 cout << "true mus i: " << true_c.i << ", j: "<< true_c.j << endl;
@@ -685,16 +670,253 @@ void find_MUS(){
     }
 }
 
-void propagate(int i, int j, int k){
-    int k_end_pos = _lsus_size[k];
+void preComputation_algorithm(){
+    for(int i=0;i< N; i++){
+        Algo3_candidate alg3_cand;
+        alg3_cand.start = -1;
+        alg3_cand.end = -1;
+        alg3_cand.cand = "";
+        
+        _Algo3_VECTOR.push_back(alg3_cand);
+    }
     
-    if(k<i || k>j)
+    int i= 0;
+    int j = _lsus_size[0];
+    int i_prev = 0;
+    int j_prev = j;
+    
+    _Algo3_VECTOR[0].end = j;
+    _Algo3_VECTOR[0].start = i;
+    char * _smallest_string = new char[j-i+1];
+    int index=0;
+    for(int m=i; m <= j ; m++){
+        _smallest_string[index] = T[m];
+        index++;
+    }
+    _Algo3_VECTOR[0].cand = _smallest_string;
+    
+    int case_own = -1;
+    
+    for(int pos= 1; pos < N; pos++ ){
+        int r = _lsus_size[pos];
+        int l = pos;
+        
+        int candidate1 =999999999;
+        int candidate2 =999999999;
+        int candidate3 =999999999;
+        int candidate4= 999999999;
+        
+        candidate1 = r-l+1;
+        
+        Algo3_candidate alg3_cand = _Algo3_VECTOR[pos];
+        
+        if(alg3_cand.cand != ""){
+
+            
+            candidate2 = int(alg3_cand.cand.length());
+        }
+        
+        if (candidate1 < candidate2){
+            case_own = CASE_1;
+        }else if (candidate2 < candidate1){
+            case_own = CASE_2;
+        }else{
+            if(alg3_cand.start < l ){
+                case_own = CASE_2;
+            }else{
+                case_own = CASE_1;
+            }
+        }
+        
+        if(j_prev < pos){
+            candidate3 = pos - i_prev + 1;
+            
+            if (case_own == CASE_1){
+                if (candidate3 < candidate1){
+                    case_own = CASE_3;
+                }else{
+                    case_own = CASE_1;
+                }
+            }else if (case_own == CASE_2){
+                if (candidate3 < candidate2){
+                    case_own = CASE_3;
+                }else{
+                    case_own = CASE_2;
+                }
+            }
+        }
+        
+        candidate4 = j_prev - i_prev + 1;
+        if(case_own == 1){
+            if(candidate4 < candidate1 ){
+                case_own = CASE_4;
+            }else{
+                case_own = CASE_1;
+            }
+        }else if (case_own == 2){
+            if(candidate4 < candidate2){
+                case_own = CASE_4;
+            }else{
+                case_own = CASE_2;
+            }
+        }else if (case_own == 3){
+            if(candidate4 < candidate3){
+                case_own = 4;
+            }else{
+                case_own = CASE_3;
+            }
+        }
+        
+        switch (case_own) {
+            case CASE_1:
+                i = l;
+                j = r;
+                break;
+            case CASE_2:
+                i = alg3_cand.start;
+                j = alg3_cand.end;
+                break;
+            case CASE_3:
+                i = i_prev;
+                j= pos;
+                break;
+            case CASE_4:
+                i = i_prev;
+                j= j_prev;
+                break;
+            default:
+                break;
+        }
+        
+        Algo3_candidate smallest_candidate;
+        
+        if (j<i){
+            int temp = j;
+            j=i;
+            i=temp;
+        }else if (i==-1 || j==-1){
+            i=1;
+            j=2;
+        }
+        
+        char * _smallest_string = new char[j-i+1];
+        int index=0;
+        for(int m=i; m <= j ; m++){
+            _smallest_string[index] = T[m];
+            index++;
+        }
+        
+        int x = -1;
+        int y = -1;
+        if (alg3_cand.cand != ""){
+            x = alg3_cand.start;
+            y = alg3_cand.end;
+        }
+        
+        bool is_in_MUS = false;
+        is_in_MUS = check_if_MUS(l,r);
+        
+        if (alg3_cand.cand != "" && y>j){
+            propagate(x, y, j+1);
+        }else if (is_in_MUS && r>j && !(i==l && r==j)){
+            propagate(l, r, j+1);
+        }
+        
+        i_prev = i;
+        j_prev = j;
+    }
+    
+    for (int pos=0 ; pos < _Algo3_VECTOR.size(); pos++){
+        if (_Algo3_VECTOR[pos].cand==""){
+            int s = _lsus_size[pos];
+            char * _cand = new char[s-pos+1];
+            int index=0;
+            for(int m=pos; m <= s ; m++){
+                _cand[index] = T[m];
+                index++;
+            }
+            _Algo3_VECTOR[pos].cand = _cand;
+            _Algo3_VECTOR[pos].start = pos;
+            _Algo3_VECTOR[pos].end = s;
+        }
+        cout << "SUS at position: " << pos << " : " << _Algo3_VECTOR[pos].cand << endl;
+    }
+}
+
+bool check_if_MUS(int l, int r){
+    bool is_mus = false;
+    for(int i=0; i< _MUS.size(); i++){
+        Candidate mus = _MUS[i];
+        int mus_i = mus.i;
+        int mus_j = mus.j;
+        
+        if (l==mus_i && r==mus_j){
+            is_mus = true;
+        }
+    }
+    return is_mus;
+}
+
+void propagate(int i, int j, int k){
+    
+    Algo3_candidate k_candidate = _Algo3_VECTOR[k];
+    
+    if(k < i || k>j)
         return;
-    else if (k_end_pos==N){
-        // that means it is null. Thus it was assigned the largest value N
-        Candidate k_cand;
-        k_cand.i = i;
-        k_cand.j = j;
+    else if (k_candidate.cand == ""){
+        k_candidate.start = i;
+        k_candidate.end = j;
+        
+        char * _cand = new char[j-i+1];
+        int index=0;
+        for(int m=i; m <= j ; m++){
+            _cand[index] = T[m];
+            index++;
+        }
+        k_candidate.cand = _cand;
+        
+        _Algo3_VECTOR[k] = k_candidate;
+        return;
+    }
+    
+    int i_prime = k_candidate.start;
+    int j_prime = k_candidate.end;
+    
+    if ((j_prime - i_prime) > j-i) {
+        char * _cand = new char[j-i+1];
+        int index=0;
+        for(int m=i; m <= j ; m++){
+            _cand[index] = T[m];
+            index++;
+        }
+        k_candidate.cand = _cand;
+        k_candidate.start=i;
+        k_candidate.end = j;
+        
+        _Algo3_VECTOR[k] = k_candidate;
+        
+        if (j_prime > j ){
+            propagate(i_prime, j_prime, j+1);
+        }
+    }else if (((j_prime-i_prime) < (j-i) ) && (j_prime<j) ){
+        propagate(i, j, j_prime+1);
+    }else{
+        if(i<i_prime){
+            char * _cand = new char[j-i+1];
+            int index=0;
+            for(int m=i; m <= j ; m++){
+                _cand[index] = T[m];
+                index++;
+            }
+            k_candidate.cand = _cand;
+            k_candidate.start = i;
+            k_candidate.end = j;
+            
+            _Algo3_VECTOR[k] = k_candidate;
+            propagate(i_prime, j_prime, j_prime+1);
+        }else{
+            propagate(i, j, j_prime+1);
+        }
         
         return;
     }
@@ -868,126 +1090,10 @@ int main()
     baseline_algorithm();
     unique_substring();
     find_MUS();
-    
-    /*cout << "Would you like to validate the tree?"
-         << flush;
-    std::string s;
-    getline( cin, s );
-    if ( s.size() > 0 && s[ 0 ] == 'Y' || s[ 0 ] == 'y' )
-        validate();*/
-
+    preComputation_algorithm();
     return 1;
 };
-
-//
-// The validation code consists of two routines.  All it does
-// is traverse the entire tree.  walk_tree() calls itself
-// recursively, building suffix strings up as it goes.  When
-// walk_tree() reaches a leaf node, it checks to see if the
-// suffix derived from the tree matches the suffix starting
-// at the same point in the input text.  If so, it tags that
-// suffix as correct in the GoodSuffixes[] array.  When the tree
-// has been traversed, every entry in the GoodSuffixes array should
-// have a value of 1.
-//
-// In addition, the BranchCount[] array is updated while the tree is
-// walked as well.  Every count in the array has the
-// number of child edges emanating from that node.  If the node
-// is a leaf node, the value is set to -1.  When the routine
-// finishes, every node should be a branch or a leaf.  The number
-// of leaf nodes should match the number of suffixes (the length)
-// of the input string.  The total number of branches from all
-// nodes should match the node count.
-//
 
 char CurrentString[ MAX_LENGTH ];
 char GoodSuffixes[ MAX_LENGTH ];
 char BranchCount[ MAX_LENGTH * 2 ] = { 0 };
-
-/*
-Comment out by @rubayet
-void validate()
-{
-    for ( int i = 0 ; i < N ; i++ )
-        GoodSuffixes[ i ] = 0;
-    walk_tree( 0, 0 );
-    int error = 0;
-    for ( int i = 0 ; i < N ; i++ )
-        if ( GoodSuffixes[ i ] != 1 ) {
-            cout << "Suffix " << i << " count wrong!\n";
-            error++;
-        }
-    if ( error == 0 )
-        cout << "All Suffixes present!\n";
-    int leaf_count = 0;
-    int branch_count = 0;
-    for ( int i = 0 ; i < Node::Count ; i++ ) {
-        if ( BranchCount[ i ] == 0 )
-            cout << "Logic error on node "
-                 << i
-                 << ", not a leaf or internal node!\n";
-        else if ( BranchCount[ i ] == -1 )
-            leaf_count++;
-        else
-            branch_count += BranchCount[ i ];
-    }
-    cout << "Leaf count : "
-         << leaf_count
-         << ( leaf_count == ( N + 1 ) ? " OK" : " Error!" )
-         << "\n";
-    cout << "Branch count : "
-         << branch_count
-         << ( branch_count == (Node::Count - 1) ? " OK" : " Error!" )
-         << endl;
-}
-*/
-
-
-/*
-Comment out by @rubayet
-int walk_tree( int start_node, int last_char_so_far )
-{
-    int edges = 0;
-    for ( int i = 0 ; i < 256 ; i++ ) {
-        Edge edge = Edge::Find( start_node, i );
-        if ( edge.start_node != -1 ) {
-            if ( BranchCount[ edge.start_node ] < 0 )
-                cerr << "Logic error on node "
-                     << edge.start_node
-                     << '\n';
-            BranchCount[ edge.start_node ]++;
-            edges++;
-            int l = last_char_so_far;
-            for ( int j = edge.first_char_index ; j <= edge.last_char_index ; j++ )
-                CurrentString[ l++ ] = T[ j ];
-            CurrentString[ l ] = '\0';
-            if ( walk_tree( edge.end_node, l ) ) {
-                if ( BranchCount[ edge.end_node ] > 0 )
-                        cerr << "Logic error on node "
-                             << edge.end_node
-                             << "\n";
-                BranchCount[ edge.end_node ]--;
-            }
-        }
-    }
-//
-// If this node didn't have any child edges, it means we
-// are at a leaf node, and can check on this suffix.  We
-// check to see if it matches the input string, then tick
-// off it's entry in the GoodSuffixes list.
-//
-    if ( edges == 0 ) {
-        cout << "Suffix : ";
-        for ( int m = 0 ; m < last_char_so_far ; m++ )
-            cout << CurrentString[ m ];
-        cout << "\n";
-        GoodSuffixes[ strlen( CurrentString ) - 1 ]++;
-        cout << "comparing: " << ( T + N - strlen( CurrentString ) + 1 )
-             << " to " << CurrentString << endl;
-        if ( strcmp(T + N - strlen(CurrentString) + 1, CurrentString ) != 0 )
-            cout << "Comparison failure!\n";
-        return 1;
-    } else
-        return 0;
-}
-*/
