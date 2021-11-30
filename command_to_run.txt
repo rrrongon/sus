@@ -1,0 +1,2 @@
+g++ -o sus.ex suf_tree.cpp
+./sus.exe
