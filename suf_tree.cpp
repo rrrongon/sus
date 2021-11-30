@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <fstream>
 
 using std::cout;
 using std::cin;
@@ -501,8 +502,8 @@ int find_leaf_node(std::string search_string, int pos){
         case FULL_MATCH:
             // hold the last node
             // break
-            if (DEBUG_LOG)
-                cout << "search string: " << search_string << " end node: " << end_node << ", leaf edge len: " << intermediate_pos_increase << endl;
+            // if (DEBUG_LOG)
+            //     cout << "search string: " << search_string << " end node: " << end_node << ", leaf edge len: " << intermediate_pos_increase << endl;
             _POS_EDGE_LEN_MAPPING.insert(std::pair<int, int>(pos, intermediate_pos_increase-1));
             break;
         case NO_MATCH:
@@ -511,8 +512,8 @@ int find_leaf_node(std::string search_string, int pos){
         
         case PARTIAL_MATCH:
             if (match_pos == search_string.length()){
-                if (DEBUG_LOG)
-                    cout << "search string: " << search_string << " end node: " << end_node << ", leaf edge len: " << intermediate_pos_increase << endl;
+                // if (DEBUG_LOG)
+                //     cout << "search string: " << search_string << " end node: " << end_node << ", leaf edge len: " << intermediate_pos_increase << endl;
             }
             _POS_EDGE_LEN_MAPPING.insert(std::pair<int, int>(pos, intermediate_pos_increase-1));
         default:
@@ -535,9 +536,14 @@ void find_lsus(){
             char *lsus = new char[end_pos-pos+1];
             int index = 0;
             for (int i=pos ; i<= end_pos ; i++){
+                try{
                 lsus[index]=T[i];
-                index++;
+                index++;}
+                catch(const std::exception& e){
+                    lsus = "";
+                }
             }
+            
             if (DEBUG_LOG)
                 cout << "lsus at pos: " << pos << " is: " << lsus << endl;
             _LSUS.insert(std::pair<int, std::string>(pos, lsus));
@@ -954,16 +960,16 @@ void propagate(int i, int j, int k){
 
 void dump_edges( int current_n )
 {
-    cout << " Start  End  Suf  First Last  String\n";
+    // cout << " Start  End  Suf  First Last  String\n";
     for ( int j = 0 ; j < HASH_TABLE_SIZE ; j++ ) {
         Edge *s = Edges + j;
         if ( s->start_node == -1 )
             continue;
-        cout << setw( 5 ) << s->start_node << " "
-             << setw( 5 ) << s->end_node << " "
-             << setw( 3 ) << Nodes[ s->end_node ].suffix_node << " "
-             << setw( 5 ) << s->first_char_index << " "
-             << setw( 6 ) << s->last_char_index << "  ";
+        // cout << setw( 5 ) << s->start_node << " "
+        //      << setw( 5 ) << s->end_node << " "
+        //      << setw( 3 ) << Nodes[ s->end_node ].suffix_node << " "
+        //      << setw( 5 ) << s->first_char_index << " "
+        //      << setw( 6 ) << s->last_char_index << "  ";
         int start_node = s->start_node;
         int end_node =  s->end_node;
         int suffix_node = Nodes[ s->end_node ].suffix_node;
@@ -980,12 +986,12 @@ void dump_edges( int current_n )
                   l <= top;
                   l++ ){
                       substring += T[l];
-                      cout << T[ l ];
+                      //cout << T[ l ];
                   }
             
         data_box data (start_node, end_node, suffix_node, first_char_index, last_char_index, substring);
         DATA_HUB.push_back(data);
-        cout << "\n";
+        // cout << "\n";
     }
 }
 
@@ -1086,17 +1092,32 @@ void AddPrefix( Suffix &active, int last_char_index ) // origin_node=0, first_ch
 
 int main()
 {
-    cout << "Normally, suffix trees require that the last\n"
-         << "character in the input string be unique.  If\n"
-         << "you don't do this, your tree will contain\n"
-         << "suffixes that don't end in leaf nodes.  This is\n"
-         << "often a useful requirement. You can build a tree\n"
-         << "in this program without meeting this requirement,\n"
-         << "but the validation code will flag it as being an\n"
-         << "invalid tree\n\n";
-    cout << "Enter string: " << flush;
-    cin.getline( T, MAX_LENGTH - 1 );
-    N = strlen( T ) - 1;
+    // cout << "Normally, suffix trees require that the last\n"
+    //      << "character in the input string be unique.  If\n"
+    //      << "you don't do this, your tree will contain\n"
+    //      << "suffixes that don't end in leaf nodes.  This is\n"
+    //      << "often a useful requirement. You can build a tree\n"
+    //      << "in this program without meeting this requirement,\n"
+    //      << "but the validation code will flag it as being an\n"
+    //      << "invalid tree\n\n";
+    // cout << "Enter string: " << flush;
+    // cin.getline( T, MAX_LENGTH - 1 );
+    // N = strlen( T ) - 1;
+
+    std::string str = "/Users/rubayetrahmanrongon/Desktop/input.txt";
+    std::ifstream is(str);     // open file
+
+    char c;
+    int ind=0;
+    while (is.get(c)){
+        T[ind] = c;
+        ind++;
+    }
+    T[ind] = '\0';
+    //cin.getline( T, MAX_LENGTH - 1 );
+    //N = strlen( T ) - 1;
+    N=ind-1;
+
 //
 // The active point is the first non-leaf suffix in the
 // tree.  We start by setting this to be the empty string
