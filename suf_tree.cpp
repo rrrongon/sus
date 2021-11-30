@@ -1,16 +1,11 @@
-//
-// STREE2006.CPP - Suffix tree creation
-//
-// Mark Nelson, updated December, 2006
-//
-// This code has been tested with Borland C++ and
-// Microsoft Visual C++.
-//
-// This program asks you for a line of input, then
-// creates the suffix tree corresponding to the given
-// text. Additional code is provided to validate the
-// resulting tree after creation.
-//
+/*
+This work is done by 
+Rubayet Rahman Rongon
+& 
+Kazi Misba Ul Islam
+as a project implementation of paper "On Shortest Unique Substring Queries"
+
+*/
 #include <iostream>
 #include <iomanip>
 #include <cstdlib>
@@ -47,22 +42,7 @@ void find_MUS();
 void preComputation_algorithm();
 bool check_if_MUS(int l, int r);
 void propagate(int start, int end, int k);
-//
-// When a new tree is added to the table, we step
-// through all the currently defined suffixes from
-// the active point to the end point.  This structure
-// defines a Suffix by its final character.
-// In the canonical representation, we define that last
-// character by starting at a node in the tree, and
-// following a string of characters, represented by
-// first_char_index and last_char_index.  The two indices
-// point into the input string.  Note that if a suffix
-// ends at a node, there are no additional characters
-// needed to characterize its last character position.
-// When this is the case, we say the node is Explicit,
-// and set first_char_index > last_char_index to flag
-// that.
-//
+
 
 class data_box{
     public:
@@ -186,13 +166,10 @@ class Edge {
         static int Hash( int node, int c );
 };
 
-//
-//  The only information contained in a node is the
-//  suffix link. Each suffix in the tree that ends
-//  at a particular node can find the next smaller suffix
-//  by following the suffix_node link to a new node.  Nodes
-//  are stored in a simple array.
-//
+/*
+Each suffix tree is composed of nodes connected by edges.
+So we have nodes class and edge class each having some capabilities as function
+*/
 class Node {
     public :
         int suffix_node;
@@ -200,55 +177,16 @@ class Node {
         static int Count;
 };
 
-//
-// This is the hash table where all the currently
-// defined edges are stored.  You can dump out
-// all the currently defined edges by iterating
-// through the table and finding edges whose start_node
-// is not -1.
-//
-
 Edge Edges[ HASH_TABLE_SIZE ];
-
-//
-// The array of defined nodes.  The count is 1 at the
-// start because the initial tree has the root node
-// defined, with no children.
-//
 
 int Node::Count = 1;
 Node Nodes[ MAX_LENGTH * 2 ];
-
-//
-// Necessary forward references
-//
-/*
-comment out by @rubayet
-void validate();
-int walk_tree( int start_node, int last_char_so_far );
-*/
-
-//
-// The default ctor for Edge just sets start_node
-// to the invalid value.  This is done to guarantee
-// that the hash table is initially filled with unused
-// edges.
-//
 
 Edge::Edge()
 {
     start_node = -1;
 }
 
-//
-// I create new edges in the program while walking up
-// the set of suffixes from the active point to the
-// endpoint.  Each time I create a new edge, I also
-// add a new node for its end point.  The node entry
-// is already present in the Nodes[] array, and its
-// suffix node is set to -1 by the default Node() ctor,
-// so I don't have to do anything with it at this point.
-//
 
 Edge::Edge( int init_first, int init_last, int parent_node )
 {
@@ -258,22 +196,11 @@ Edge::Edge( int init_first, int init_last, int parent_node )
     end_node = Node::Count++;
 }
 
-//
-// Edges are inserted into the hash table using this hashing
-// function.
-//
-
 int Edge::Hash( int node, int c )
 {
     return ( ( node << 8 ) + c ) % HASH_TABLE_SIZE;
 }
 
-//
-// A given edge gets a copy of itself inserted into the table
-// with this function.  It uses a linear probe technique, which
-// means in the case of a collision, we just step forward through
-// the table until we find the first unused slot.
-//
 
 void Edge::Insert()
 {
@@ -282,17 +209,6 @@ void Edge::Insert()
         i = ++i % HASH_TABLE_SIZE;
     Edges[ i ] = *this;
 }
-
-//
-// Removing an edge from the hash table is a little more tricky.
-// You have to worry about creating a gap in the table that will
-// make it impossible to find other entries that have been inserted
-// using a probe.  Working around this means that after setting
-// an edge to be unused, we have to walk ahead in the table,
-// filling in gaps until all the elements can be found.
-//
-// Knuth, Sorting and Searching, Algorithm R, p. 527
-//
 
 void Edge::Remove()
 {
@@ -320,16 +236,6 @@ void Edge::Remove()
     }
 }
 
-//
-// The whole reason for storing edges in a hash table is that it
-// makes this function fairly efficient.  When I want to find a
-// particular edge leading out of a particular node, I call this
-// function.  It locates the edge in the hash table, and returns
-// a copy of it.  If the edge isn't found, the edge that is returned
-// to the caller will have start_node set to -1, which is the value
-// used in the hash table to flag an unused entry.
-//
-
 Edge Edge::Find( int node, int c )
 {
     int i = Hash( node, c );
@@ -348,24 +254,6 @@ Edge Edge::Find( int node, int c )
     }
 }
 
-//
-// When a suffix ends on an implicit node, adding a new character
-// means I have to split an existing edge.  This function is called
-// to split an edge at the point defined by the Suffix argument.
-// The existing edge loses its parent, as well as some of its leading
-// characters.  The newly created edge descends from the original
-// parent, and now has the existing edge as a child.
-//
-// Since the existing edge is getting a new parent and starting
-// character, its hash table entry will no longer be valid.  That's
-// why it gets removed at the start of the function.  After the parent
-// and start char have been recalculated, it is re-inserted.
-//
-// The number of characters stolen from the original node and given
-// to the new node is equal to the number of characters in the suffix
-// argument, which is last - first + 1;
-//
-
 int Edge::SplitEdge( Suffix &s )
 {
     Remove();
@@ -381,17 +269,14 @@ int Edge::SplitEdge( Suffix &s )
     return new_edge->end_node;
 }
 
-//
-// This routine prints out the contents of the suffix tree
-// at the end of the program by walking through the
-// hash table and printing out all used edges.  It
-// would be really great if I had some code that will
-// print out the tree in a graphical fashion, but I don't!
-//
 
 void map_leaf_pos(){
     /*
-    Store substring for matching one by one
+    Store suffix string for  different positions
+    and matching one by one to find the leaf edge 
+    and leaf node.
+
+
     */
     const int SIZE = N+1;
     char substring_arr [SIZE];
@@ -419,6 +304,9 @@ void map_leaf_pos(){
 }
 
 int find_leaf_node(std::string search_string, int pos){
+    /*
+    find the leaf edge and leaf node.
+    */
     int match_pos = 0;
     int end_node = -1;
     int matches = NO_MATCH;
@@ -524,6 +412,9 @@ int find_leaf_node(std::string search_string, int pos){
 }
 
 void find_lsus(){
+    /*
+    finding lsus
+    */
     std::map<int, int >::iterator it;
     
     for (it=_POS_EDGE_LEN_MAPPING.begin(); it != _POS_EDGE_LEN_MAPPING.end(); it++) {
@@ -614,6 +505,10 @@ void baseline_algorithm(){
 }
 
 void unique_substring(){
+    /*
+    For finding uniqueu substring from string.
+    Part of finding MUS
+    */
     std::string full_string(T);
     
     std::vector<std::string> a1;
@@ -632,8 +527,6 @@ void unique_substring(){
                 c.j = j+1;
                 _SUBSTRING_POS_MAPPING.insert(std::pair<std::string, Candidate>(substring, c));
                 
-//                if(DEBUG_LOG)
-//                    cout << "substring: " << substring << endl;
             }
         }
     }
@@ -662,9 +555,6 @@ void unique_substring(){
                 Candidate str_pos = it->second;
                 
                 if (substring==unique_string){
-                    // store the position of the unique string
-//                    cout << "MUS: i= " << str_pos.i << ", j= " << str_pos.j << endl;
-//
                     _UNIQUE_SUBSTRING_POS.push_back(str_pos);
                 }
             }
@@ -673,6 +563,9 @@ void unique_substring(){
 }
 
 void find_MUS(){
+    /*
+    check if the uniue substring is actually MUS
+    */
     for(int i=0;i<_UNIQUE_SUBSTRING_POS.size();i++){
         Candidate c = _UNIQUE_SUBSTRING_POS[i];
         Candidate true_c;
@@ -706,6 +599,11 @@ void find_MUS(){
 }
 
 void preComputation_algorithm(){
+    /*
+    This is extension of algorithm 1 where we just calculated lsus.
+    Now need to find SUS using lsus. Our precomputation goal is to calculate this part as a precomputation.
+    So the we can make log(1) time query for any position SUS.
+    */
     for(int i=0;i< N; i++){
         Algo3_candidate alg3_cand;
         alg3_cand.start = -1;
@@ -880,6 +778,11 @@ void preComputation_algorithm(){
 }
 
 bool check_if_MUS(int l, int r){
+    /*
+    While finding SUS is algorithm 3 we need to check if a lsus is MUS or not for
+    a specific condition. This function takes lsus position as input and matches all 
+    calculated MUS with it.
+    */
     bool is_mus = false;
     for(int i=0; i< _MUS.size(); i++){
         Candidate mus = _MUS[i];
@@ -894,6 +797,12 @@ bool check_if_MUS(int l, int r){
 }
 
 void propagate(int i, int j, int k){
+    /*
+    For efficient propagation of the  algorithm 3 this function is used.
+    It checkes if a more eligible candidate covers up up to it's possible next positions then
+    less eligible sus will carry forward to other position to compete. Thus, any less optimal
+    SUS does not vanish from the competition just for losing at any certain position.
+    */
     
     Algo3_candidate k_candidate = _Algo3_VECTOR[k];
     
@@ -960,16 +869,10 @@ void propagate(int i, int j, int k){
 
 void dump_edges( int current_n )
 {
-    // cout << " Start  End  Suf  First Last  String\n";
     for ( int j = 0 ; j < HASH_TABLE_SIZE ; j++ ) {
         Edge *s = Edges + j;
         if ( s->start_node == -1 )
             continue;
-        // cout << setw( 5 ) << s->start_node << " "
-        //      << setw( 5 ) << s->end_node << " "
-        //      << setw( 3 ) << Nodes[ s->end_node ].suffix_node << " "
-        //      << setw( 5 ) << s->first_char_index << " "
-        //      << setw( 6 ) << s->last_char_index << "  ";
         int start_node = s->start_node;
         int end_node =  s->end_node;
         int suffix_node = Nodes[ s->end_node ].suffix_node;
@@ -1019,25 +922,6 @@ void Suffix::Canonize()
         }
     }
 }
-
-//
-// This routine constitutes the heart of the algorithm.
-// It is called repetitively, once for each of the prefixes
-// of the input string.  The prefix in question is denoted
-// by the index of its last character.
-//
-// At each prefix, we start at the active point, and add
-// a new edge denoting the new last character, until we
-// reach a point where the new edge is not needed due to
-// the presence of an existing edge starting with the new
-// last character.  This point is the end point.
-//
-// Luckily for use, the end point just happens to be the
-// active point for the next pass through the tree.  All
-// we have to do is update it's last_char_index to indicate
-// that it has grown by a single character, and then this
-// routine can do all its work one more time.
-//
 
 void AddPrefix( Suffix &active, int last_char_index ) // origin_node=0, first_char=0, last_char=-1
 {
@@ -1092,48 +976,31 @@ void AddPrefix( Suffix &active, int last_char_index ) // origin_node=0, first_ch
 
 int main()
 {
-    // cout << "Normally, suffix trees require that the last\n"
-    //      << "character in the input string be unique.  If\n"
-    //      << "you don't do this, your tree will contain\n"
-    //      << "suffixes that don't end in leaf nodes.  This is\n"
-    //      << "often a useful requirement. You can build a tree\n"
-    //      << "in this program without meeting this requirement,\n"
-    //      << "but the validation code will flag it as being an\n"
-    //      << "invalid tree\n\n";
-    // cout << "Enter string: " << flush;
-    // cin.getline( T, MAX_LENGTH - 1 );
-    // N = strlen( T ) - 1;
 
-    std::string str = "/Users/rubayetrahmanrongon/Desktop/input.txt";
-    std::ifstream is(str);     // open file
+    // std::string str = "/Users/rubayetrahmanrongon/Desktop/sample_dna.txt";
+    // std::ifstream is(str);     // open file
 
-    char c;
-    int ind=0;
-    while (is.get(c)){
-        T[ind] = c;
-        ind++;
-    }
-    T[ind] = '\0';
-    //cin.getline( T, MAX_LENGTH - 1 );
-    //N = strlen( T ) - 1;
-    N=ind-1;
+    // char c;
+    // int ind=0;
+    // while (is.get(c)){
+    //     T[ind] = c;
+    //     ind++;
+    // }
+    // T[ind] = '\0';
+    // //cin.getline( T, MAX_LENGTH - 1 );
+    // //N = strlen( T ) - 1;
+    // N=ind-1;
 
-//
-// The active point is the first non-leaf suffix in the
-// tree.  We start by setting this to be the empty string
-// at node 0.  The AddPrefix() function will update this
-// value after every new prefix is added.
-//
+    cout << "Enter string: " << flush;
+    cin.getline( T, MAX_LENGTH - 1 );
+    N = strlen( T ) - 1;
+
     Suffix active( 0, 0, -1 );  // The initial active prefix
     for ( int i = 0 ; i <= N ; i++ )
         AddPrefix( active, i );
-//
-// Once all N prefixes have been added, the resulting table
-// of edges is printed out, and a validation step is
-// optionally performed.
 
     /* Added by
-     Rubayet */
+     @rubayet */
     
     dump_edges( N );
     map_leaf_pos();
@@ -1174,3 +1041,9 @@ int main()
 char CurrentString[ MAX_LENGTH ];
 char GoodSuffixes[ MAX_LENGTH ];
 char BranchCount[ MAX_LENGTH * 2 ] = { 0 };
+
+/*
+I, Rubayet and Kazi For suffix tree basics and implementation of suffix tree 
+took help from this website https://marknelson.us/posts/1996/08/01/suffix-trees.html
+titled as "Fast String Searching With Suffix Trees" by Mark Nelson.
+*/
