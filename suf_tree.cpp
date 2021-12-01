@@ -84,8 +84,8 @@ data_box::data_box(int start_node_l,
 // are stored in a hash table, whose size is also
 // defined here.
 //
-const int MAX_LENGTH = 100000;
-const int HASH_TABLE_SIZE = 217999;  //A prime roughly 10% larger
+const int MAX_LENGTH = 1000;
+const int HASH_TABLE_SIZE = 2179;  //A prime roughly 10% larger
 
 //
 // The input buffer and character count.  Please note that N
@@ -429,12 +429,13 @@ void find_lsus(){
             for (int i=pos ; i<= end_pos ; i++){
                 try{
                 lsus[index]=T[i];
-                index++;}
+                index++;
+                }
                 catch(const std::exception& e){
                     lsus = "";
                 }
             }
-            
+            lsus[index]='\0';
             if (DEBUG_LOG)
                 cout << "lsus at pos: " << pos << " is: " << lsus << endl;
             _LSUS.insert(std::pair<int, std::string>(pos, lsus));
@@ -497,7 +498,7 @@ void baseline_algorithm(){
             baseline_lsus[index]=T[x];
             index++;
         }
-        
+        baseline_lsus[index]='\0';
         cout << "pos: "<< pos << ", start pos: " << i << ", endpos: " << j << ", lsus: " << baseline_lsus <<  endl;
         _BASELINE_SUS.insert(std::pair<int, Baseline_sus>(pos, b_sus));
     }
@@ -626,6 +627,7 @@ void preComputation_algorithm(){
         _smallest_string[index] = T[m];
         index++;
     }
+    _smallest_string[index]='\0';
     _Algo3_VECTOR[0].cand = _smallest_string;
     
     int case_own = -1;
@@ -738,7 +740,7 @@ void preComputation_algorithm(){
             _smallest_string[index] = T[m];
             index++;
         }
-        
+        _smallest_string[index] = '\0';
         int x = -1;
         int y = -1;
         if (alg3_cand.cand != ""){
@@ -768,6 +770,7 @@ void preComputation_algorithm(){
                 _cand[index] = T[m];
                 index++;
             }
+            _cand[index] = '\0';
             _Algo3_VECTOR[pos].cand = _cand;
             _Algo3_VECTOR[pos].start = pos;
             _Algo3_VECTOR[pos].end = s;
@@ -818,6 +821,7 @@ void propagate(int i, int j, int k){
             _cand[index] = T[m];
             index++;
         }
+        _cand[index]='\0';
         k_candidate.cand = _cand;
         
         _Algo3_VECTOR[k] = k_candidate;
@@ -834,6 +838,7 @@ void propagate(int i, int j, int k){
             _cand[index] = T[m];
             index++;
         }
+        _cand[index]='\0';
         k_candidate.cand = _cand;
         k_candidate.start=i;
         k_candidate.end = j;
@@ -853,6 +858,7 @@ void propagate(int i, int j, int k){
                 _cand[index] = T[m];
                 index++;
             }
+            _cand[index]='\0';
             k_candidate.cand = _cand;
             k_candidate.start = i;
             k_candidate.end = j;
